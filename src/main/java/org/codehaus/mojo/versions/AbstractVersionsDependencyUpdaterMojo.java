@@ -28,6 +28,7 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
+import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Parent;
@@ -45,8 +46,7 @@ import org.apache.maven.shared.artifact.filter.PatternIncludesArtifactFilter;
  * @since 1.0-alpha-3
  */
 public abstract class AbstractVersionsDependencyUpdaterMojo
-    extends AbstractVersionsUpdaterMojo
-{
+        extends AbstractVersionsUpdaterMojo {
 
     private static final String END_RANGE_CHARS = "])";
 
@@ -60,7 +60,7 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      *
      * @since 1.0-beta-1
      */
-    @Parameter( property = "includes" )
+    @Parameter(property = "includes")
     private String includesList = null;
 
     /**
@@ -71,7 +71,7 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      *
      * @since 1.0-beta-1
      */
-    @Parameter( property = "excludes" )
+    @Parameter(property = "excludes")
     private String excludesList = null;
 
     /**
@@ -92,12 +92,21 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
     @Parameter
     private String[] excludes = null;
 
+
+    /**
+     * a scope to use to filter the artifacts matching the asked scope or better
+     *
+     * @since 2.8
+     */
+    @Parameter(property = "scope")
+    private String scope = null;
+
     /**
      * Whether to process the dependencies section of the project.
      *
      * @since 1.0-alpha-3
      */
-    @Parameter( property = "processDependencies", defaultValue = "true" )
+    @Parameter(property = "processDependencies", defaultValue = "true")
     private boolean processDependencies;
 
     /**
@@ -105,7 +114,7 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      *
      * @since 1.0-alpha-3
      */
-    @Parameter( property = "processDependencyManagement", defaultValue = "true" )
+    @Parameter(property = "processDependencyManagement", defaultValue = "true")
     private boolean processDependencyManagement;
 
     /**
@@ -113,7 +122,7 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      *
      * @since 2.3
      */
-    @Parameter( property = "processParent", defaultValue = "false" )
+    @Parameter(property = "processParent", defaultValue = "false")
     private boolean processParent = false;
 
     /**
@@ -135,7 +144,7 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      *
      * @since 1.0-alpha-3
      */
-    @Parameter( property = "excludeReactor", defaultValue = "true" )
+    @Parameter(property = "excludeReactor", defaultValue = "true")
     private boolean excludeReactor;
 
     /**
@@ -144,8 +153,7 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @return returns <code>true if the project/dependencies section of the pom should be processed.
      * @since 1.0-alpha-3
      */
-    public boolean isProcessingDependencies()
-    {
+    public boolean isProcessingDependencies() {
         return processDependencies;
     }
 
@@ -155,8 +163,7 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @return returns <code>true if the project/dependencyManagement section of the pom should be processed.
      * @since 1.0-alpha-3
      */
-    public boolean isProcessingDependencyManagement()
-    {
+    public boolean isProcessingDependencyManagement() {
         return processDependencyManagement;
     }
 
@@ -166,8 +173,7 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @return returns <code>true if the project/parent section of the pom should be processed.
      * @since 2.3
      */
-    public boolean isProcessingParent()
-    {
+    public boolean isProcessingParent() {
         return processParent;
     }
 
@@ -177,8 +183,7 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @return returns <code>true if the artifacts produced in the current reactor should be excluded from processing.
      * @since 1.0-alpha-3
      */
-    public boolean isExcludeReactor()
-    {
+    public boolean isExcludeReactor() {
         return excludeReactor;
     }
 
@@ -189,18 +194,14 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @return
      * @since 1.0-alpha-3
      */
-    protected Artifact findArtifact( Dependency dependency )
-    {
-        if ( getProject().getDependencyArtifacts() == null )
-        {
+    protected Artifact findArtifact(Dependency dependency) {
+        if (getProject().getDependencyArtifacts() == null) {
             return null;
         }
         Iterator<?> iter = getProject().getDependencyArtifacts().iterator();
-        while ( iter.hasNext() )
-        {
+        while (iter.hasNext()) {
             Artifact artifact = (Artifact) iter.next();
-            if ( compare( artifact, dependency ) )
-            {
+            if (compare(artifact, dependency)) {
                 return artifact;
             }
         }
@@ -214,77 +215,63 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @return
      * @since 1.0-alpha-3
      */
-    protected Artifact toArtifact( Dependency dependency )
-        throws MojoExecutionException
-    {
-        Artifact artifact = findArtifact( dependency );
-        if ( artifact == null )
-        {
-            try
-            {
-                return getHelper().createDependencyArtifact( dependency );
-            }
-            catch ( InvalidVersionSpecificationException e )
-            {
-                throw new MojoExecutionException( e.getMessage(), e );
+    protected Artifact toArtifact(Dependency dependency)
+            throws MojoExecutionException {
+        Artifact artifact = findArtifact(dependency);
+        if (artifact == null) {
+            try {
+                return getHelper().createDependencyArtifact(dependency);
+            } catch (InvalidVersionSpecificationException e) {
+                throw new MojoExecutionException(e.getMessage(), e);
             }
         }
         return artifact;
     }
 
-    protected Artifact toArtifact( Parent model )
-        throws MojoExecutionException
-    {
+    protected Artifact toArtifact(Parent model)
+            throws MojoExecutionException {
         Dependency d = new Dependency();
-        d.setArtifactId( model.getArtifactId() );
-        d.setGroupId( model.getGroupId() );
-        d.setVersion( model.getVersion() );
-        d.setType( "pom" );
-        d.setScope( Artifact.SCOPE_COMPILE );
-        return this.toArtifact( d );
+        d.setArtifactId(model.getArtifactId());
+        d.setGroupId(model.getGroupId());
+        d.setVersion(model.getVersion());
+        d.setType("pom");
+        d.setScope(Artifact.SCOPE_COMPILE);
+        return this.toArtifact(d);
     }
 
-    protected String toString( MavenProject project )
-    {
+    protected String toString(MavenProject project) {
         StringBuilder buf = new StringBuilder();
 
-        buf.append( project.getGroupId() );
-        buf.append( ':' );
-        buf.append( project.getArtifactId() );
+        buf.append(project.getGroupId());
+        buf.append(':');
+        buf.append(project.getArtifactId());
 
-        if ( project.getVersion() != null && project.getVersion().length() > 0 )
-        {
-            buf.append( ":" );
-            buf.append( project.getVersion() );
+        if (project.getVersion() != null && project.getVersion().length() > 0) {
+            buf.append(":");
+            buf.append(project.getVersion());
         }
 
         return buf.toString();
     }
 
-    protected String toString( Dependency d )
-    {
+    protected String toString(Dependency d) {
         StringBuilder buf = new StringBuilder();
-        buf.append( d.getGroupId() );
-        buf.append( ':' );
-        buf.append( d.getArtifactId() );
-        if ( d.getType() != null && d.getType().length() > 0 )
-        {
-            buf.append( ':' );
-            buf.append( d.getType() );
+        buf.append(d.getGroupId());
+        buf.append(':');
+        buf.append(d.getArtifactId());
+        if (d.getType() != null && d.getType().length() > 0) {
+            buf.append(':');
+            buf.append(d.getType());
+        } else {
+            buf.append(":jar");
         }
-        else
-        {
-            buf.append( ":jar" );
+        if (d.getClassifier() != null && d.getClassifier().length() > 0) {
+            buf.append(':');
+            buf.append(d.getClassifier());
         }
-        if ( d.getClassifier() != null && d.getClassifier().length() > 0 )
-        {
-            buf.append( ':' );
-            buf.append( d.getClassifier() );
-        }
-        if ( d.getVersion() != null && d.getVersion().length() > 0 )
-        {
-            buf.append( ":" );
-            buf.append( d.getVersion() );
+        if (d.getVersion() != null && d.getVersion().length() > 0) {
+            buf.append(":");
+            buf.append(d.getVersion());
         }
         return buf.toString();
     }
@@ -296,11 +283,10 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @return <code>true</code> if the dependency is produced by the current reactor.
      * @since 1.0-alpha-3
      */
-    protected boolean isProducedByReactor( Dependency dependency )
-    {
-        for ( Object reactorProject : reactorProjects ) {
+    protected boolean isProducedByReactor(Dependency dependency) {
+        for (Object reactorProject : reactorProjects) {
             MavenProject project = (MavenProject) reactorProject;
-            if ( compare(project, dependency) ) {
+            if (compare(project, dependency)) {
                 return true;
             }
         }
@@ -312,17 +298,14 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * Compare a project to a dependency. Returns true only if the groupId and artifactId are all equal.
      *
      * @param project the project
-     * @param dep the dependency
+     * @param dep     the dependency
      * @return true if project and dep refer to the same artifact
      */
-    private boolean compare( MavenProject project, Dependency dep )
-    {
-        if ( !StringUtils.equals( project.getGroupId(), dep.getGroupId() ) )
-        {
+    private boolean compare(MavenProject project, Dependency dep) {
+        if (!StringUtils.equals(project.getGroupId(), dep.getGroupId())) {
             return false;
         }
-        if ( !StringUtils.equals( project.getArtifactId(), dep.getArtifactId() ) )
-        {
+        if (!StringUtils.equals(project.getArtifactId(), dep.getArtifactId())) {
             return false;
         }
         return true;
@@ -336,22 +319,17 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @param dep
      * @return true if artifact and dep refer to the same artifact
      */
-    private boolean compare( Artifact artifact, Dependency dep )
-    {
-        if ( !StringUtils.equals( artifact.getGroupId(), dep.getGroupId() ) )
-        {
+    private boolean compare(Artifact artifact, Dependency dep) {
+        if (!StringUtils.equals(artifact.getGroupId(), dep.getGroupId())) {
             return false;
         }
-        if ( !StringUtils.equals( artifact.getArtifactId(), dep.getArtifactId() ) )
-        {
+        if (!StringUtils.equals(artifact.getArtifactId(), dep.getArtifactId())) {
             return false;
         }
-        if ( !StringUtils.equals( artifact.getType(), dep.getType() ) )
-        {
+        if (!StringUtils.equals(artifact.getType(), dep.getType())) {
             return false;
         }
-        if ( !StringUtils.equals( artifact.getClassifier(), dep.getClassifier() ) )
-        {
+        if (!StringUtils.equals(artifact.getClassifier(), dep.getClassifier())) {
             return false;
         }
         return true;
@@ -363,22 +341,25 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @param artifact The artifact we want to check.
      * @return true if the artifact should be processed, false otherwise.
      */
-    protected boolean isIncluded( Artifact artifact )
-    {
+    protected boolean isIncluded(Artifact artifact) {
         boolean result = true;
 
         ArtifactFilter includesFilter = this.getIncludesArtifactFilter();
 
-        if ( includesFilter != null )
-        {
-            result = includesFilter.include( artifact );
+        if (includesFilter != null) {
+            result = includesFilter.include(artifact);
         }
 
         ArtifactFilter excludesFilter = this.getExcludesArtifactFilter();
 
-        if ( excludesFilter != null )
-        {
-            result = result && excludesFilter.include( artifact );
+        if (excludesFilter != null) {
+            result = result && excludesFilter.include(artifact);
+        }
+
+        ArtifactFilter scopeFilter = this.getScopeArtifactFilter();
+
+        if (scopeFilter != null) {
+            result = result && scopeFilter.include(artifact);
         }
 
         return result;
@@ -386,49 +367,46 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
 
     /**
      * Indicates whether any includes were specified via the 'includes' or 'includesList' options.
-     * 
+     *
      * @return true if includes were specified, false otherwise.
      */
-    protected boolean hasIncludes()
-    {
+    protected boolean hasIncludes() {
         return includes != null || includesList != null;
     }
 
-    private ArtifactFilter getIncludesArtifactFilter()
-    {
-        if ( includesFilter == null && ( includes != null || includesList != null ) )
-        {
+    private ArtifactFilter getIncludesArtifactFilter() {
+        if (includesFilter == null && (includes != null || includesList != null)) {
             List<String> patterns = new ArrayList<>();
-            if ( this.includesList != null )
-            {
-                patterns.addAll( separatePatterns( includesList ) );
+            if (this.includesList != null) {
+                patterns.addAll(separatePatterns(includesList));
+            } else if (includes != null) {
+                patterns.addAll(Arrays.asList(includes));
             }
-            else if ( includes != null )
-            {
-                patterns.addAll( Arrays.asList( includes ) );
-            }
-            includesFilter = new PatternIncludesArtifactFilter( patterns );
+            includesFilter = new PatternIncludesArtifactFilter(patterns);
         }
         return includesFilter;
     }
 
-    private ArtifactFilter getExcludesArtifactFilter()
-    {
-        if ( excludesFilter == null && ( excludes != null || excludesList != null ) )
-        {
+    private ArtifactFilter getExcludesArtifactFilter() {
+        if (excludesFilter == null && (excludes != null || excludesList != null)) {
             List<String> patterns = new ArrayList<>();
-            if ( excludesList != null )
-            {
-                patterns.addAll( separatePatterns( excludesList ) );
+            if (excludesList != null) {
+                patterns.addAll(separatePatterns(excludesList));
+            } else if (excludes != null) {
+                patterns.addAll(Arrays.asList(excludes));
             }
-            else if ( excludes != null )
-            {
-                patterns.addAll( Arrays.asList( excludes ) );
-            }
-            excludesFilter = new PatternExcludesArtifactFilter( patterns );
+            excludesFilter = new PatternExcludesArtifactFilter(patterns);
         }
         return excludesFilter;
     }
+
+    private ArtifactFilter getScopeArtifactFilter() {
+        if (scope == null) {
+            return null;
+        }
+        return new ScopeArtifactFilter(scope);
+    }
+
 
     /**
      * To handle multiple includes with version range like "group:artifact:jar:[1.0.0,2.2)", we have to use a parsing a
@@ -437,62 +415,50 @@ public abstract class AbstractVersionsDependencyUpdaterMojo
      * @param includeString the string to parse
      * @return list of patterns
      */
-    protected List<String> separatePatterns( String includeString )
-    {
-        if ( includeString == null )
-        {
+    protected List<String> separatePatterns(String includeString) {
+        if (includeString == null) {
             return Collections.emptyList();
         }
 
         List<String> patterns = new ArrayList<>();
-        int indexOf = nextCommaIndex( includeString );
-        while ( indexOf >= 0 )
-        {
-            patterns.add( includeString.substring( 0, indexOf ) );
-            includeString = includeString.substring( indexOf + 1 );
-            indexOf = nextCommaIndex( includeString );
+        int indexOf = nextCommaIndex(includeString);
+        while (indexOf >= 0) {
+            patterns.add(includeString.substring(0, indexOf));
+            includeString = includeString.substring(indexOf + 1);
+            indexOf = nextCommaIndex(includeString);
         }
-        patterns.add( includeString );
+        patterns.add(includeString);
 
         return patterns;
     }
 
-    private int nextCommaIndex( final String includeString )
-    {
+    private int nextCommaIndex(final String includeString) {
 
-        int indexOfComma = includeString.indexOf( ',' );
-        int nextRangeStartDelimiterIndex = findFirstChar( includeString, START_RANGE_CHARS );
-        if ( nextRangeStartDelimiterIndex >= 0 )
-        {
-            if ( !( indexOfComma >= 0 && indexOfComma < nextRangeStartDelimiterIndex ) )
-            {
-                int nextStopDelimiterIndex = findFirstChar( includeString, END_RANGE_CHARS );
+        int indexOfComma = includeString.indexOf(',');
+        int nextRangeStartDelimiterIndex = findFirstChar(includeString, START_RANGE_CHARS);
+        if (nextRangeStartDelimiterIndex >= 0) {
+            if (!(indexOfComma >= 0 && indexOfComma < nextRangeStartDelimiterIndex)) {
+                int nextStopDelimiterIndex = findFirstChar(includeString, END_RANGE_CHARS);
 
                 // recursive call
-                int tmp = nextCommaIndex( includeString.substring( nextStopDelimiterIndex + 1 ) );
-                indexOfComma = ( tmp >= 0 ) ? nextStopDelimiterIndex + 1 + tmp : -1;
+                int tmp = nextCommaIndex(includeString.substring(nextStopDelimiterIndex + 1));
+                indexOfComma = (tmp >= 0) ? nextStopDelimiterIndex + 1 + tmp : -1;
             }
         }
         return indexOfComma;
 
     }
 
-    private int findFirstChar( final String includeString, final String chars )
-    {
+    private int findFirstChar(final String includeString, final String chars) {
         int nextRangeStartDelimiterIndex = -1;
 
         char[] delimiters = chars.toCharArray();
-        for ( int i = 0; i < delimiters.length; i++ )
-        {
-            int index = includeString.indexOf( delimiters[i] );
-            if ( index >= 0 && nextRangeStartDelimiterIndex >= 0 )
-            {
-                nextRangeStartDelimiterIndex = Math.min( index, nextRangeStartDelimiterIndex );
-            }
-            else
-            {
-                if ( index >= 0 )
-                {
+        for (int i = 0; i < delimiters.length; i++) {
+            int index = includeString.indexOf(delimiters[i]);
+            if (index >= 0 && nextRangeStartDelimiterIndex >= 0) {
+                nextRangeStartDelimiterIndex = Math.min(index, nextRangeStartDelimiterIndex);
+            } else {
+                if (index >= 0) {
                     nextRangeStartDelimiterIndex = index;
                 }
             }
